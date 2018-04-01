@@ -11,6 +11,7 @@ TimingTask spinningTask;
 boolean yDirection;
 // scaling is a power of 2
 int n = 4;
+int anti = 1;
 
 // 2. Hints
 boolean triangleHint = true;
@@ -22,12 +23,12 @@ String renderer = P3D;
 
 void setup() {
   //use 2^n to change the dimensions
-  size(1024, 1024, renderer);
+  size(512, 512, renderer);
   scene = new Scene(this);
   if (scene.is3D())
     scene.setType(Scene.Type.ORTHOGRAPHIC);
   scene.setRadius(width/2);
-  scene.fitBallInterpolation();
+  scene.fitBall();
 
   // not really needed here but create a spinning task
   // just to illustrate some frames.timing features. For
@@ -68,6 +69,23 @@ void draw() {
   popMatrix();
 }
 
+int getIntensity(int a, int b) {
+  float pixel_witdh = 1/(anti * 1.0);
+  int inside = 0;
+  for(int i = 0; i < anti ; i++){
+    for(int j = 0; j < anti ; j++){
+      float x_a = a + pixel_witdh * i;
+      float y_a = b + pixel_witdh * j;
+      if( testSide(x_a, y_a) ) {
+        inside += 1;
+      }
+    }
+  }
+  
+  int intensity = Math.round(255*(inside/(1.0 * anti * anti)));
+  return intensity;
+}
+
 // Implement this function to rasterize the triangle.
 // Coordinates are given in the frame system which has a dimension of 2^n
 void triangleRaster() {
@@ -75,10 +93,26 @@ void triangleRaster() {
   // here we convert v1 to illustrate the idea
   if (debug) {
     pushStyle();
-    stroke(255, 255, 0, 125);
-    point(round(frame.coordinatesOf(v1).x()), round(frame.coordinatesOf(v1).y()));
+    noStroke();
+    fill(255, 255, 0, 125);
+    //Vector v4;
+    
+    int potencia = (int)Math.pow(2, n-1);
+    for(int i = - potencia; i <= potencia; i++){
+      for(int j = - potencia; j <= potencia; j++){
+        putColor(i, j, getIntensity(i, j));
+        rect(i, j, 1, 1);
+      }
+    }
+    
+    // point( round(frame.coordinatesOf(v4).y()), round(frame.coordinatesOf(v4).y()));
+    // point(round(frame.coordinatesOf(v2).x()), round(frame.coordinatesOf(v2).y()));
+    // point(round(frame.coordinatesOf(v3).x()), round(frame.coordinatesOf(v3).y()));
+    
     popStyle();
   }
+  
+  
 }
 
 void randomizeTriangle() {
@@ -134,4 +168,55 @@ void keyPressed() {
       spinningTask.run(20);
   if (key == 'y')
     yDirection = !yDirection;
+  if ( key == 'a'){
+    anti *= 2;
+    if( anti > 8 ){
+      anti = 1;
+    }
+  } 
+}
+
+void putColor(float x , float y, int intensity) {
+     float ax = frame.coordinatesOf(v1).x();
+      float ay = frame.coordinatesOf(v1).y();
+      
+      float bx = frame.coordinatesOf(v2).x();
+      float by = frame.coordinatesOf(v2).y();
+      
+      float cx = frame.coordinatesOf(v3).x();
+      float cy = frame.coordinatesOf(v3).y();
+      
+      // a -> b      
+      float t1 = abs((( bx - ax) * ( y - ay)) - ((x - ax) * (by - ay)));
+      // b -> c
+      float t2 = abs(((cx - bx) * (y - by)) - ((x - bx) * (cy - by)));
+      // c -> a
+      float t3 = abs(((ax - cx) * (y - cy)) - ((x - cx) * (ay - cy)));
+      
+      float m = max(t1, max(t2, t3));
+      t1/=m;
+      t2/=m;
+      t3/=m;
+      
+      fill(255*(t1), 255*(t2), 255*(t3), intensity);
+  }
+
+boolean testSide(float x , float y) {
+      float ax = frame.coordinatesOf(v1).x();
+      float ay = frame.coordinatesOf(v1).y();
+      
+      float bx = frame.coordinatesOf(v2).x();
+      float by = frame.coordinatesOf(v2).y();
+      
+      float cx = frame.coordinatesOf(v3).x();
+      float cy = frame.coordinatesOf(v3).y();
+      
+      // a -> b      
+      float t1 = (( bx - ax) * ( y - ay)) - ((x - ax) * (by - ay));
+      // b -> c
+      float t2 = ((cx - bx) * (y - by)) - ((x - bx) * (cy - by));
+      // c -> a
+      float t3 = ((ax - cx) * (y - cy)) - ((x - cx) * (ay - cy));
+
+      return (t2>0 && t3>0 && t1>0) || (t2<0 && t3<0 && t1<0);
 }
